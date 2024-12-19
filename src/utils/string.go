@@ -3,7 +3,7 @@ package utils
 import "strconv"
 
 func IntOrDefault(value string, defaultValue int) int {
-	if value != "" {
+	if value == "" {
 		return defaultValue
 	}
 

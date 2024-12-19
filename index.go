@@ -40,9 +40,11 @@ func main() {
 		log.Fatal("TOKEN not found in environment")
 	}
 
+	fmt.Printf("Token %s...%s\n", token[:3], token[len(token)-3:])
+
 	port := utils.IntOrDefault(os.Getenv("PORT"), 8080)
 
-	fmt.Printf("Token %s...%s\n", token[:3], token[len(token)-3:])
+	fmt.Printf("Port %d\n", port)
 
 	go initBot(token)
 	initHttp(port)
