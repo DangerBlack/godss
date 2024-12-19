@@ -12,15 +12,26 @@ import (
 	"os"
 )
 
-var counter = dss.NewDss(1000, 24*time.Hour)
+type Server struct {
+	counter  *dss.Dss
+	filePath string
+}
+
+func NewServer(counter *dss.Dss, filePath string) *Server {
+	return &Server{
+		counter:  counter,
+		filePath: filePath,
+	}
+}
+
 var firstDay time.Time = time.Date(2024, time.December, 19, 0, 0, 0, 0, time.UTC)
 
 var words []string
 
-func loadWordListFromFile(file string) ([]string, error) {
+func (s *Server) loadWordListFromFile() ([]string, error) {
 	var words []string
 
-	f, err := os.Open(file)
+	f, err := os.Open(s.filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -38,11 +49,11 @@ func loadWordListFromFile(file string) ([]string, error) {
 	return words, nil
 }
 
-func HandleChallenge(c *gin.Context) {
+func (s *Server) HandleChallenge(c *gin.Context) {
 	var numberOfDays int
 	if words == nil {
 		var err error
-		if words, err = loadWordListFromFile("word_list.txt"); err != nil {
+		if words, err = s.loadWordListFromFile(); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to load word list"})
 			return
 		}
@@ -62,7 +73,7 @@ func HandleChallenge(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-func HandlePopularity(c *gin.Context) {
+func (s *Server) HandlePopularity(c *gin.Context) {
 	var err error
 	var req models.PopularityRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -75,7 +86,7 @@ func HandlePopularity(c *gin.Context) {
 	}
 
 	var results map[string]int64
-	if results, err = counter.CountEvents("", req.Options, nil); err != nil {
+	if results, err = s.counter.CountEvents("", req.Options, nil); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to fetch popularity scores"})
 		return
 	}

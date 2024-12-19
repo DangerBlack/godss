@@ -85,6 +85,8 @@ func initBot(token string) {
 }
 
 func initHttp(port int) {
+	server := server.NewServer(counter, "data/words.txt")
+
 	r := gin.Default()
 	r.Use(cors.Default())
 

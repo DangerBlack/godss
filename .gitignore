@@ -1,4 +1,4 @@
 .env
 node_modules/*
 archive/*
-word_list.txt
+words.txt
