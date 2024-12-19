@@ -14,4 +14,6 @@ COPY src/ ./src/
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /godss
 
+EXPOSE 8080
+
 CMD ["/godss"]

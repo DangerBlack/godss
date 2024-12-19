@@ -50,6 +50,11 @@ func HandleChallenge(c *gin.Context) {
 
 	numberOfDays = int(time.Since(firstDay).Hours() / 24)
 
+	if numberOfDays >= len(words) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No more challenges available"})
+		return
+	}
+
 	response := models.ChallengeResponse{
 		Challenge: words[numberOfDays],
 	}
