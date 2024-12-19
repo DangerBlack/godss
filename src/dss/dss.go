@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bluele/gcache"
 )
 
 // Constants to be used in the search
@@ -20,10 +22,24 @@ const (
 )
 
 // Dss is the class containing methods for counting events
-type Dss struct{}
+type Dss struct {
+	cache gcache.Cache
+}
+
+// NewDss creates a new Dss instance
+func NewDss(cacheSize int, expiration time.Duration) *Dss {
+	cache := gcache.New(cacheSize).
+		LFU().
+		Expiration(expiration).
+		Build()
+
+	return &Dss{
+		cache: cache,
+	}
+}
 
 // CountEvent fetches the Google search result for a query and returns the count of results
-func (d *Dss) CountEvent(query string, after *time.Time) (int, error) {
+func (d *Dss) CountEvent(query string, after *time.Time) (int64, error) {
 
 	if after != nil {
 		query = fmt.Sprintf("%s after:%s", query, after.Format("2006/01/02"))
@@ -59,7 +75,7 @@ func (d *Dss) CountEvent(query string, after *time.Time) (int, error) {
 	// Check if result stats div is present
 	bodyStr := string(body)
 	if !strings.Contains(bodyStr, `<div id="result-stats">`) {
-		println(bodyStr)
+		//println(bodyStr)
 		return 0, nil
 	}
 
@@ -85,7 +101,7 @@ func (d *Dss) CountEvent(query string, after *time.Time) (int, error) {
 	}
 
 	value := strings.ReplaceAll(fields[pos], ".", "") // Remove dots from the number
-	count, err := strconv.Atoi(value)
+	count, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		println("Error parsing count", value)
 		return 0, err
@@ -94,9 +110,35 @@ func (d *Dss) CountEvent(query string, after *time.Time) (int, error) {
 	return count, nil
 }
 
+func (d *Dss) CountEventCached(query string, after *time.Time) (int64, error) {
+	if after != nil {
+		return d.CountEvent(query, after)
+	}
+
+	// Check if the result is in the cache
+	result, err := d.cache.Get(query)
+	if err == nil {
+		return result.(int64), nil
+	}
+
+	// If not found, query the result
+	count, err := d.CountEvent(query, after)
+	if err != nil {
+		return 0, err
+	}
+
+	// Store the result in the cache
+	if err = d.cache.Set(query, count); err != nil {
+		println("Error setting cache for", query)
+	}
+
+	return count, nil
+
+}
+
 // CountEvents returns the number of results for each of the provided search keys combined with a head
-func (d *Dss) CountEvents(head string, keys []string, after *time.Time) (map[string]int, error) {
-	results := make(map[string]int)
+func (d *Dss) CountEvents(head string, keys []string, after *time.Time) (map[string]int64, error) {
+	results := make(map[string]int64)
 	var wg sync.WaitGroup
 	mu := &sync.Mutex{} // Mutex to prevent concurrent map writes
 

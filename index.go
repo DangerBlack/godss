@@ -9,8 +9,13 @@ import (
 
 	"512b.it/godss/src/chart"
 	"512b.it/godss/src/dss"
+	"512b.it/godss/src/server"
+	"512b.it/godss/src/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 type ReplyData struct {
@@ -21,6 +26,7 @@ type ReplyData struct {
 }
 
 var replyManager = make(map[int64]*ReplyData) // stores state for each user (chat_id)
+var counter = dss.NewDss(1000, 24*time.Hour)
 
 func main() {
 	err := godotenv.Load(".env")
@@ -34,8 +40,15 @@ func main() {
 		log.Fatal("TOKEN not found in environment")
 	}
 
+	port := utils.IntOrDefault(os.Getenv("PORT"), 8080)
+
 	fmt.Printf("Token %s...%s\n", token[:3], token[len(token)-3:])
 
+	go initBot(token)
+	initHttp(port)
+}
+
+func initBot(token string) {
 	// Initialize the bot
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -68,6 +81,18 @@ func main() {
 		case replyManager[chatID] != nil:
 			handleReply(bot, chatID, text)
 		}
+	}
+}
+
+func initHttp(port int) {
+	r := gin.Default()
+	r.Use(cors.Default())
+
+	r.GET("/api/challenge", server.HandleChallenge)
+	r.GET("/api/popularity", server.HandlePopularity)
+
+	if err := r.Run(fmt.Sprintf(":%d", port)); err != nil {
+		panic(err)
 	}
 }
 
@@ -136,10 +161,8 @@ func generateChart(bot *tgbotapi.BotAPI, chatID int64, head string, values []str
 	// Simulate chart creation and response (replace with real implementation)
 	bot.Send(tgbotapi.NewChatAction(chatID, "upload_photo"))
 
-	counter := dss.Dss{}
-
 	println("Generating chart for", head, strings.Join(values, ", "))
-	var results map[string]int
+	var results map[string]int64
 	if results, err = counter.CountEvents(head, values, nil); err != nil {
 		msg := tgbotapi.NewMessage(chatID, fmt.Sprintf("Unable to complete the operation for <i>\"%s\"</i>.", head))
 		msg.ParseMode = "HTML"
@@ -147,7 +170,7 @@ func generateChart(bot *tgbotapi.BotAPI, chatID int64, head string, values []str
 		return
 	}
 
-	orderResults := []int{}
+	orderResults := []int64{}
 	for _, value := range values {
 		orderResults = append(orderResults, results[value])
 	}

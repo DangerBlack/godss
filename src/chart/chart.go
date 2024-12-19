@@ -14,7 +14,7 @@ type ChartConfig struct {
 	Data struct {
 		Labels   []string `json:"labels"`
 		Datasets []struct {
-			Data []int `json:"data"`
+			Data []int64 `json:"data"`
 		} `json:"datasets"`
 	} `json:"data"`
 	Options struct {
@@ -35,13 +35,13 @@ type ChartConfig struct {
 }
 
 // CreatePieChart sends the pie chart configuration to QuickChart API and returns the chart image as binary data
-func CreatePieChart(headLabel string, labels []string, data []int) ([]byte, error) {
+func CreatePieChart(headLabel string, labels []string, data []int64) ([]byte, error) {
 	// Create the chart configuration
 	var chartConfig ChartConfig
 	chartConfig.Type = "pie"
 	chartConfig.Data.Labels = labels
 	chartConfig.Data.Datasets = []struct {
-		Data []int `json:"data"`
+		Data []int64 `json:"data"`
 	}{
 		{Data: data},
 	}
@@ -88,7 +88,7 @@ func main() {
 	// Example usage of CreatePieChart
 	headLabel := "Sample Pie Chart"
 	labels := []string{"Red", "Blue", "Yellow", "Green"}
-	data := []int{10, 20, 30, 40}
+	data := []int64{10, 20, 30, 40}
 
 	// Get the pie chart image as binary data
 	image, err := CreatePieChart(headLabel, labels, data)
