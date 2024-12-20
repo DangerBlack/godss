@@ -150,7 +150,7 @@ func (d *Dss) CountEvents(head string, keys []string, after *time.Time) (map[str
 			defer wg.Done()
 			query := fmt.Sprintf("%s %s", head, k)
 			println("Querying for", query)
-			count, err := d.CountEvent(query, after)
+			count, err := d.CountEventCached(query, after)
 			if err != nil {
 				fmt.Printf("Error for query %s: %v\n", query, err)
 				return
